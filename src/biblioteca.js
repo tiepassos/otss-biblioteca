@@ -16,6 +16,9 @@
   const API = "https://www.wixapis.com";
   const PAGE = 30;
   const TOKEN_KEY = "otss-biblioteca-token";
+  // índice de texto completo gerado por scripts/indexar.mjs, publicado ao lado deste arquivo
+  const SCRIPT_SRC = (document.currentScript && document.currentScript.src) || "https://tiepassos.github.io/otss-biblioteca/src/biblioteca.js";
+  const INDEX_URL = new URL("../index/textos.json", SCRIPT_SRC).href;
 
   const SECOES = [
     { slug: "academico", nome: "Produção acadêmica", curto: "Acadêmico", cor: "#123d7a", desc: "Artigos, livros, capítulos, teses, dissertações e trabalhos em eventos de pesquisadoras e pesquisadores do OTSS e parceiros." },
@@ -220,6 +223,13 @@ a{color:inherit}
 .sbox.open .ac{max-height:min(460px,62vh);overflow-y:auto}
 .ac .all{border-top:1px solid var(--line);font-weight:700;color:var(--azul-escuro);padding:14px 22px}
 .ac .none{padding:16px 22px;color:var(--ink-3)}
+.hit{margin:6px 0 0;font-size:13.5px;line-height:1.5;color:var(--ink-2);background:#fff8dc;border-left:3px solid var(--sol);border-radius:0 8px 8px 0;padding:7px 10px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.hit span{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#8a6a00;margin-right:6px}
+.hits{display:grid;gap:8px}
+.hits a,.hits div{display:block;text-decoration:none;font-size:14px;line-height:1.55;color:var(--ink-2);background:#fff8dc;border-left:3px solid var(--sol);border-radius:0 10px 10px 0;padding:10px 12px}
+.hits b{display:block;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#8a6a00;margin-bottom:2px}
+.fttag{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:800;color:#2f6b3a;background:#e8f4ea;border-radius:999px;padding:4px 10px;margin:4px 0 8px}
+.ftnote{font-size:13px;color:var(--ink-3);margin:8px 0 0}
 
 /* entradas de seção no hero */
 .entries{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:clamp(28px,4vw,44px)}
@@ -689,6 +699,8 @@ form{background:#fff;border-radius:calc(var(--radius) + 4px);padding:clamp(20px,
         ]);
         this.prepare({ tipos, temas, acervo, tecs, midia });
         this.ready = true;
+        if (this._ftApply) { this._ftApply(); this._ftApply = null; }
+        if (this.state.q) this.loadFulltext();
         this.renderEntries();
         this.render(true);
         if (this.pendingItem) { const it = this.byId.get(this.pendingItem); if (it) this.openItem(it); }
@@ -805,19 +817,79 @@ form{background:#fff;border-radius:calc(var(--radius) + 4px);padding:clamp(20px,
       if (!q) return list.map((it) => ({ it, score: 0 }));
       const terms = q.split(/\s+/).filter(Boolean);
       const field = scope === "titulo" ? "hayTitle" : scope === "autoria" ? "hayAut" : "hay";
+      const useText = scope === "tudo" || scope === "texto";
       const out = [];
       for (const it of list) {
-        let score = 0, ok = true;
+        let score = 0, ok = true, inText = false;
         for (const t of terms) {
-          if (it[field].indexOf(t) < 0) { ok = false; break; }
-          if (it.hayTitle.includes(t)) score += 10;
-          if (it.hayTitle.startsWith(t)) score += 4;
-          if (it.hayAut.includes(t)) score += 3;
-          score += 1;
+          const meta = scope !== "texto" && it[field].indexOf(t) >= 0;
+          const txt = useText && it.ftAll ? it.ftAll.indexOf(t) >= 0 : false;
+          if (!meta && !txt) { ok = false; break; }
+          if (meta) {
+            if (it.hayTitle.includes(t)) score += 10;
+            if (it.hayTitle.startsWith(t)) score += 4;
+            if (it.hayAut.includes(t)) score += 3;
+            score += 1;
+          } else score += 0.6;
+          if (txt) inText = true;
         }
-        if (ok) { if (it.hayTitle.includes(q)) score += 25; out.push({ it, score }); }
+        if (ok) {
+          if (it.hayTitle.includes(q)) score += 25;
+          if (inText && it.ftAll.includes(q)) score += 2;
+          out.push({ it, score, inText });
+        }
       }
       return out;
+    }
+
+    /* ----- texto completo (índice gerado por scripts/indexar.mjs) ----- */
+    loadFulltext() {
+      if (this._ftPromise) return this._ftPromise;
+      const url = this.getAttribute("indice-url") || INDEX_URL;
+      this.ftState = "carregando";
+      this._ftPromise = fetch(url, { cache: "no-cache" }).then((r) => (r.ok ? r.json() : Promise.reject(new Error("índice " + r.status)))).then((j) => {
+        let n = 0;
+        const apply = () => {
+          for (const [id, d] of Object.entries(j.itens || {})) {
+            const it = this.byId && this.byId.get(id);
+            const paginas = d.paginas || (j.docs || {})[d.doc];
+            if (!it || !Array.isArray(paginas)) continue;
+            it.ft = { tipo: d.tipo, fonte: d.fonte, pages: paginas.map((p) => String(p).normalize("NFC")) };
+            it.ft.npages = it.ft.pages.map(norm);
+            it.ftAll = it.ft.npages.join(" \u0002 ");
+            n++;
+          }
+          this.ftCount = n; this.ftState = "ok";
+          if (this.state.q) this.render(false);
+        };
+        if (this.ready) apply(); else this._ftApply = apply;
+      }).catch((e) => { this.ftState = "erro"; console.warn("[otss-biblioteca] índice de texto completo indisponível", e); });
+      return this._ftPromise;
+    }
+    // trechos do texto completo que contêm os termos buscados
+    textHits(it, max = 1) {
+      if (!it.ft || !this.state.q || this.state.scope === "titulo" || this.state.scope === "autoria") return [];
+      const terms = norm(this.state.q).trim().split(/\s+/).filter((t) => t.length > 1);
+      if (!terms.length || (this.state.scope !== "texto" && terms.every((t) => it.hayTitle.includes(t)))) return [];
+      const phrase = norm(this.state.q).trim();
+      const sumario = /(?:\.\s?){8,}/;
+      const ranked = it.ft.npages.map((p, i) => ({ i, k: terms.filter((t) => p.includes(t)).length + (p.includes(phrase) ? 1 : 0), toc: sumario.test(p) ? 1 : 0 }))
+        .filter((x) => x.k > 0).sort((a, b) => b.k - a.k || a.toc - b.toc || a.i - b.i).slice(0, max);
+      return ranked.map(({ i }) => {
+        const np = it.ft.npages[i], op = it.ft.pages[i];
+        let pos = np.indexOf(phrase); if (pos < 0) pos = Math.min(...terms.map((t) => np.indexOf(t)).filter((x) => x >= 0));
+        let a = Math.max(0, pos - 90), b = Math.min(op.length, pos + 170);
+        if (a > 0) { const sp = op.indexOf(" ", a); if (sp > 0 && sp < pos) a = sp + 1; }
+        if (b < op.length) { const sp = op.lastIndexOf(" ", b); if (sp > pos) b = sp; }
+        const txt = op.slice(a, b).replace(/(?:\.\s?){4,}/g, " … ").replace(/\s{2,}/g, " ");
+        return { page: it.ft.tipo === "pdf" ? i + 1 : 0, text: (a > 0 ? "…" : "") + txt + (b < op.length ? "…" : "") };
+      });
+    }
+    hitHTML(it) {
+      const [h] = this.textHits(it, 1);
+      if (!h) return "";
+      const onde = it.ft.tipo === "resumo" ? "No resumo da revista" : "No texto" + (h.page ? ` · p. ${h.page}` : "");
+      return `<p class="hit"><span>${onde}</span>${this.hl(h.text)}</p>`;
     }
     passFilters(it, { ignoreYear = false, ignoreAutor = false } = {}) {
       const s = this.state;
@@ -906,7 +978,7 @@ form{background:#fff;border-radius:calc(var(--radius) + 4px);padding:clamp(20px,
     <span class="right"><kbd class="kbd">/</kbd><button class="sclear" data-act="clear-q" aria-label="Limpar busca">${I.x}</button>${hero ? `<button class="sgo" data-act="go">Buscar</button>` : ""}</span>
   </div>
   <div class="ac" id="ac-${id}" role="listbox"></div>
-</div>${hero ? `<div class="scope" role="group" aria-label="Buscar em"><span>Buscar em:</span>${[["tudo", "Tudo"], ["titulo", "Títulos"], ["autoria", "Autoria"]].map(([v, l]) => `<button data-act="scope" data-v="${v}" aria-pressed="${this.state.scope === v}">${l}</button>`).join("")}</div>` : ""}`;
+</div>${hero ? `<div class="scope" role="group" aria-label="Buscar em"><span>Buscar em:</span>${[["tudo", "Tudo"], ["titulo", "Títulos"], ["autoria", "Autoria"], ["texto", "Texto completo"]].map(([v, l]) => `<button data-act="scope" data-v="${v}" aria-pressed="${this.state.scope === v}">${l}</button>`).join("")}</div>` : ""}`;
     }
 
     startPlaceholder() {
@@ -1059,12 +1131,12 @@ ${feats.length ? `<section class="block wrap"><div class="sec-head"><div><h2>Em 
       const all = this.matchQ(this.items.filter((it) => this.passFilters(it)));
       const by = {};
       all.forEach((r) => (by[r.it.sec] = by[r.it.sec] || []).push(r));
-      const scopeTxt = s.scope === "titulo" ? " nos títulos" : s.scope === "autoria" ? " na autoria" : "";
+      const scopeTxt = s.scope === "titulo" ? " nos títulos" : s.scope === "autoria" ? " na autoria" : s.scope === "texto" ? " no texto completo" : "";
       if (!all.length) {
         slot.innerHTML = `<div class="sr-head"><h2>Nenhum resultado para <q>${esc(s.q)}</q>${scopeTxt}</h2></div>${this.emptyHTML(true)}`;
         return;
       }
-      slot.innerHTML = `<div class="sr-head"><h2>${fmtN(all.length)} ${all.length === 1 ? "resultado" : "resultados"} para <q>${esc(s.q)}</q>${scopeTxt}</h2>
+      slot.innerHTML = `<div class="sr-head"><h2>${fmtN(all.length)} ${all.length === 1 ? "resultado" : "resultados"} para <q>${esc(s.q)}</q>${scopeTxt}</h2>${this.ftNote()}
         <div class="sr-sum">${SECOES.filter((x) => by[x.slug]).map((x) => `<button style="--c:${x.cor}" data-act="sec" data-sec="${x.slug}" data-keepq="1">${esc(x.nome)} · ${by[x.slug].length} ${I.arrow}</button>`).join("")}</div></div>
         ${this.activeRowHTML()}
         ${SECOES.filter((x) => by[x.slug]).map((x) => {
@@ -1076,6 +1148,13 @@ ${feats.length ? `<section class="block wrap"><div class="sec-head"><div><h2>Em 
           return `<section class="sr-group" style="--c:${x.cor}"><div class="sec-head"><h2>${esc(x.nome)} <small>${res.length}</small></h2>
             ${res.length > n ? `<button class="more-link" style="--c:${x.cor}" data-act="sec" data-sec="${x.slug}" data-keepq="1">Ver todos os ${res.length} ${I.arrow}</button>` : ""}</div>${body}</section>`;
         }).join("")}<div style="height:48px"></div>`;
+    }
+
+    ftNote() {
+      if (this.state.scope === "titulo" || this.state.scope === "autoria") return "";
+      if (this.ftState === "ok") return `<p class="ftnote">Inclui busca dentro do texto completo de ${fmtN(this.ftCount)} documentos.</p>`;
+      if (this.ftState === "carregando") return `<p class="ftnote">Carregando o texto completo dos documentos…</p>`;
+      return "";
     }
 
     /* ----- SEÇÃO ----- */
@@ -1193,7 +1272,7 @@ ${feats.length ? `<section class="block wrap"><div class="sec-head"><div><h2>Em 
     activeRowHTML(inSection) {
       const s = this.state;
       const chips = [
-        ...(s.q && inSection ? [`<button class="chip" style="--c:#16283b" aria-pressed="true" data-act="clear-q">“${esc(s.q)}”${s.scope !== "tudo" ? ` em ${s.scope === "titulo" ? "títulos" : "autoria"}` : ""} ${I.x}</button>`] : []),
+        ...(s.q && inSection ? [`<button class="chip" style="--c:#16283b" aria-pressed="true" data-act="clear-q">“${esc(s.q)}”${s.scope !== "tudo" ? ` em ${({ titulo: "títulos", autoria: "autoria", texto: "texto completo" })[s.scope]}` : ""} ${I.x}</button>`] : []),
         ...(s.autor ? [`<button class="chip" style="--c:#123d7a" aria-pressed="true" data-act="autor" data-k="${esc(s.autor)}">Autoria: ${esc((this.autorByKey.get(s.autor) || {}).nome || s.autor)} ${I.x}</button>`] : []),
         ...[...s.temas].map((sl) => { const t = this.temaBySlug.get(sl); return t ? `<button class="chip" style="--c:${t.cor}" aria-pressed="true" data-act="tema" data-slug="${esc(sl)}">${esc(t.nome)} ${I.x}</button>` : ""; }),
         ...(s.de || s.ate ? [`<button class="chip" style="--c:#3b4d61" aria-pressed="true" data-act="clear-anos">${s.de === s.ate ? s.de : `${s.de || "…"}–${s.ate || "…"}`} ${I.x}</button>`] : []),
@@ -1289,7 +1368,7 @@ ${feats.length ? `<section class="block wrap"><div class="sec-head"><div><h2>Em 
       const temas = it.temas.slice(0, 3).map((t) => `<span class="tag" style="--c:${t.cor}">${esc(t.nome)}</span>`).join("");
       const venue = [it.veiculo, it.editora, it.cidade].filter(Boolean).join(" · ");
       return `<article class="row" style="--c:${it.cor};--i:${i}" data-open="${it.id}" tabindex="0" role="button" aria-label="${esc(it.titulo)}">
-        ${this.kickerOf(it)}<div><h3>${this.hl(it.titulo)}</h3>${it.autores ? `<p class="authors">${this.hl(it.autores)}</p>` : ""}${venue ? `<p class="venue">${this.hl(venue)}</p>` : ""}${!it.autores && it.resumo ? `<p class="excerpt">${this.hl(it.resumo.slice(0, 200))}</p>` : ""}</div>
+        ${this.kickerOf(it)}<div><h3>${this.hl(it.titulo)}</h3>${it.autores ? `<p class="authors">${this.hl(it.autores)}</p>` : ""}${venue ? `<p class="venue">${this.hl(venue)}</p>` : ""}${!it.autores && it.resumo ? `<p class="excerpt">${this.hl(it.resumo.slice(0, 200))}</p>` : ""}${this.hitHTML(it)}</div>
         ${this.actsHTML(it)}${temas ? `<div class="foot">${temas}</div>` : ""}</article>`;
     }
     cardHTML(it, i) {
@@ -1300,7 +1379,8 @@ ${feats.length ? `<section class="block wrap"><div class="sec-head"><div><h2>Em 
         media = `<div class="media${it.kind === "acervo" ? " portrait" : ""}">${img ? `<img src="${esc(img)}" alt="" loading="lazy">` : ""}${it.kind === "video" ? `<span class="play"><i>${I.play}</i></span>` : ""}${it.kind === "podcast" ? `<span class="play" style="--pc:#15803d"><i>${I.play}</i></span>` : ""}${it.duracao && it.kind === "video" ? `<span class="dur">${esc(it.duracao)}</span>` : ""}</div>`;
       }
       const ods = it.ods && it.ods.length ? `<div class="ods">${it.ods.map((n) => `<span style="--o:${ODS_CORES[n]}" title="ODS ${n} · ${ODS_NOMES[n]}">${n}</span>`).join("")}</div>` : "";
-      const excerpt = it.sec !== "academico" && it.resumo ? `<p class="excerpt">${this.hl(it.resumo.slice(0, 240))}</p>` : "";
+      const hit = this.hitHTML(it);
+      const excerpt = hit || (it.sec !== "academico" && it.resumo ? `<p class="excerpt">${this.hl(it.resumo.slice(0, 240))}</p>` : "");
       return `<article class="card" style="--c:${it.cor};--i:${i}" data-open="${it.id}" tabindex="0" role="button" aria-label="${esc(it.titulo)}">
         ${media}<div class="body">${this.kickerOf(it)}<h3>${this.hl(it.titulo)}</h3>${it.autores && it.kind === "acervo" ? `<p class="authors">${this.hl(it.autores)}</p>` : ""}${it.veiculo ? `<p class="venue">${this.hl(it.veiculo)}</p>` : ""}${excerpt}${ods}
         <div class="foot">${temas}${this.actsHTML(it)}</div></div></article>`;
@@ -1428,13 +1508,21 @@ ${feats.length ? `<section class="block wrap"><div class="sec-head"><div><h2>Em 
           ${it.fotos.length ? `<div class="gallery">${it.fotos.map((f) => `<img src="${esc(wixImage(f, 400, 400))}" alt="" loading="lazy">`).join("")}</div>` : ""}
           <div class="btnrow">${btn.join("")}</div>${relHTML}`;
       }
+      const hits = this.textHits(it, 6).sort((a, b) => a.page - b.page);
+      const pdfDireto = it.ft && it.ft.tipo === "pdf" && /\.pdf($|\?)|usrfiles\.com/i.test(it.arquivo || it.ft.fonte || "");
+      const base = it.arquivo || it.ft?.fonte || "";
+      const ftTag = it.ft ? `<span class="fttag">✓ ${it.ft.tipo === "resumo" ? "Resumo da revista pesquisável" : `Texto completo pesquisável${it.ft.tipo === "pdf" ? ` · ${it.ft.pages.length} p.` : ""}`}</span>` : "";
+      const hitsHTML = hits.length ? `<div class="blk"><h4>Trechos encontrados para “${esc(this.state.q)}”</h4><div class="hits">${hits.map((h) => {
+        const label = h.page ? `Página ${h.page}` : it.ft.tipo === "resumo" ? "Resumo" : "Texto";
+        return pdfDireto && h.page ? `<a href="${esc(base)}#page=${h.page}" target="_blank" rel="noopener"><b>${label} ↗</b>${this.hl(h.text)}</a>` : `<div><b>${label}</b>${this.hl(h.text)}</div>`;
+      }).join("")}</div></div>` : "";
       const capa = it.capa ? wixImage(it.capa, 900) : "";
       const vid = youtubeId(it.video);
       const autChips = it.aut.length ? `<div class="chips" style="margin:6px 0 4px">${it.aut.map((a) => `<button class="au" style="--c:#123d7a" data-act="autor-go" data-k="${esc(a.key)}">${esc(a.display)} <small>${(this.autorByKey.get(a.key) || {}).n || 1}</small></button>`).join("")}</div>` : "";
       const rows = [["Formato", it.formato], ["Publicado em", it.veiculo], ["Editora", it.editora], ["Local", it.cidade], ["Ano", it.ano],
         ["Projetos", (it.projetos || []).join(", ")], ["Palavras-chave", (it.palavras || []).join(", ")]].filter((r) => r[1]);
       return `${capa ? `<img class="hero-img" src="${esc(capa)}" alt="Capa de ${esc(it.titulo)}" style="max-width:300px">` : ""}
-        <h2>${esc(it.titulo)}</h2>${autChips}${temas}
+        <h2>${esc(it.titulo)}</h2>${autChips}${ftTag}${temas}${hitsHTML}
         ${it.resumo ? `<p class="rich">${esc(it.resumo)}</p>` : ""}
         <dl class="meta">${rows.map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join("")}</dl>
         <div class="ref"><small>Como citar (ABNT)</small>${esc(this.refOf(it))}<div class="btnrow" style="margin:12px 0 0"><button class="cta light sm" data-act="copy-ref" data-id="${it.id}">${I.copy} Copiar referência</button></div></div>
@@ -1457,7 +1545,7 @@ ${feats.length ? `<section class="block wrap"><div class="sec-head"><div><h2>Em 
             if (this.state.sec !== "inicio" || this.state.q || !v) { if (v !== this.state.q) this.go({ q: v }, { scroll: false }); }
           }, 260);
         });
-        input.addEventListener("focus", () => { if (input.value.trim().length > 1) this.suggest(box, input.value); });
+        input.addEventListener("focus", () => { this.loadFulltext(); if (input.value.trim().length > 1) this.suggest(box, input.value); });
         input.addEventListener("keydown", (e) => {
           const opts = box._opts || [];
           if (e.key === "ArrowDown" || e.key === "ArrowUp") {

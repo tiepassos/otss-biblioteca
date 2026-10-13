@@ -51,6 +51,18 @@ As submissões chegam no formulário **“Biblioteca · Submissão de publicaç�
 - **Publicações OTSS**, **Tecnologias Sociais** e **Vídeos e Podcast**: cards ou lista.
 - **Busca**: autocompletar com itens, autoria e temas. Pode buscar em tudo, só nos títulos ou só na autoria. A página de resultados agrupa por seção. Atalho: tecla `/`.
 
+### Busca dentro dos documentos (texto completo)
+A busca também procura **dentro dos PDFs**. O texto é extraído pelo script `scripts/indexar.mjs`, que roda sozinho **todo dia às 4h** (GitHub Action “Indexar texto completo”) e grava `index/textos.json`. Item novo no CMS entra na busca no dia seguinte. Para indexar na hora: GitHub → Actions → *Indexar texto completo* → *Run workflow*.
+
+Fontes indexadas, nesta ordem: arquivo enviado no CMS (campo **Arquivo**), PDF do Google Drive (precisa estar compartilhado como “qualquer pessoa com o link”), PDF direto, ou o PDF/resumo indicado pela página da revista. Não entram:
+- PDFs digitalizados (imagem, sem texto);
+- links quebrados ou bloqueados;
+- páginas de revista sem PDF nem resumo;
+- Scribd e ResearchGate;
+- o PDF de um livro inteiro linkado em vários capítulos (vale só para o item do livro).
+
+O motivo de cada item que ficou de fora fica em `index/textos.json`, na chave `falhas`.
+
 O índice de autoria é montado a partir do campo **Autoria** (nomes separados por `;`, no formato `SOBRENOME, Iniciais`). Quanto mais padronizado esse campo, mais preciso o índice.
 
 ### Criar uma aba nova
