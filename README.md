@@ -84,7 +84,10 @@ Não tem build. Para ver localmente, sirva a pasta com qualquer servidor estáti
 
 O componente usa um *client ID* OAuth público do Wix (aplicativo “Biblioteca OTSS (front-end)”) para ler o CMS como visitante anônimo. Só as coleções com leitura “Qualquer pessoa” ficam acessíveis. A coleção de submissões não é legível por visitantes.
 
-Atributos opcionais do elemento: `client-id`, `form-id`, `site-id`, `sticky-offset`, `fonte-titulo`, `fonte-titulo-familia`.
+Atributos opcionais do elemento: `client-id`, `form-id`, `site-id`, `sticky-offset`, `fonte-titulo`, `fonte-titulo-familia`, `tema`.
+
+### Tema claro e escuro
+O botão de lua/sol na barra de seções alterna entre claro e escuro, e a escolha fica salva no navegador de cada pessoa. O tema inicial vem do atributo `tema`: `claro` (padrão), `escuro` ou `auto` (segue o sistema da pessoa).
 
 ### Fonte do título (Museo 900)
 O título do hero usa **Museo 900**. A fonte é comercial e **não está no repositório**. Para aparecer para os visitantes do site, use um destes caminhos (com a licença de webfont da Museo):
