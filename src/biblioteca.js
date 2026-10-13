@@ -592,11 +592,12 @@ form{background:#fff;border-radius:calc(var(--radius) + 4px);padding:clamp(20px,
 
   const BOT = (id, w) => `https://static.wixstatic.com/media/8d49b9_${id}~mv2.png/v1/fit/w_${w},h_${Math.round(w * 1.4)},q_85,enc_auto/botanico.png`;
   // posições pensadas para a planta entrar pela borda; --o é o ponto de apoio do balanço
+  // todas em pé: a base fica fora da página (embaixo ou na lateral) e só a parte de cima entra
   const BOTANICOS = [
     { id: "b7e80bbb609a409a86f48882b4e63c5f", cls: "r", w: "620px", pos: "right:-270px;bottom:-175px", r: "-6deg", o: "60% 100%", s: ["-2deg", "2.2deg"], t: "9s", d: ".2s", f: ["60px", "60px"] },
-    { id: "f2a34af41ebc43e49e7ea272df7a355a", cls: "r m", w: "400px", pos: "right:-40px;top:-210px", r: "165deg", o: "50% 100%", s: ["-3deg", "2.5deg"], t: "11s", d: ".5s", f: ["40px", "-60px"] },
-    { id: "8ef082c085d447c59e23f0bbf6fb20d5", cls: "l", w: "330px", pos: "left:-205px;top:-195px", r: "135deg", o: "50% 100%", s: ["-2.5deg", "3deg"], t: "12s", d: ".35s", f: ["-60px", "-40px"] },
-    { id: "6760da4398fc4e9d98cb303a431512d8", cls: "l", w: "360px", pos: "left:-170px;bottom:-130px", r: "24deg", o: "30% 100%", s: ["2deg", "-2.5deg"], t: "10s", d: ".6s", f: ["-60px", "40px"] },
+    { id: "f2a34af41ebc43e49e7ea272df7a355a", cls: "r m", w: "400px", pos: "right:-250px;top:-30px", r: "-34deg", o: "50% 100%", s: ["-2.5deg", "2deg"], t: "11s", d: ".5s", f: ["60px", "0px"] },
+    { id: "8ef082c085d447c59e23f0bbf6fb20d5", cls: "l", w: "320px", pos: "left:-235px;top:40px", r: "36deg", o: "50% 100%", s: ["-2deg", "2.5deg"], t: "12s", d: ".35s", f: ["-60px", "0px"] },
+    { id: "6760da4398fc4e9d98cb303a431512d8", cls: "l", w: "360px", pos: "left:-170px;bottom:-130px", r: "18deg", o: "30% 100%", s: ["2deg", "-2.5deg"], t: "10s", d: ".6s", f: ["-60px", "40px"] },
   ];
   const FLORA = `<div class="flora" aria-hidden="true">${BOTANICOS.map((b) => `<span class="bot ${b.cls}" style="${b.pos};--w:${b.w};--r:${b.r};--o:${b.o};--s1:${b.s[0]};--s2:${b.s[1]};--t:${b.t};--d:${b.d};--fx:${b.f[0]};--fy:${b.f[1]}"><img src="${BOT(b.id, 700)}" alt="" loading="eager" decoding="async"></span>`).join("")}</div>`;
   const TOPO = `<svg class="topo" viewBox="0 0 900 600" aria-hidden="true">${Array.from({ length: 11 }, (_, i) => {
