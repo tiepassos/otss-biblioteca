@@ -65,6 +65,9 @@ O motivo de cada item que ficou de fora fica em `index/textos.json`, na chave `f
 
 O índice de autoria é montado a partir do campo **Autoria** (nomes separados por `;`, no formato `SOBRENOME, Iniciais`). Quanto mais padronizado esse campo, mais preciso o índice.
 
+### Projetos (Povos, Redes…)
+O campo **Projetos** (Acervo, Tecnologias e Vídeos/Podcast) alimenta o filtro por projeto: um seletor na barra de cada seção, um grupo no painel de filtros e atalhos no topo da página (“Projeto Povos · 22”). Para incluir um item num projeto, escreva o nome exatamente igual ao dos outros itens (ex.: `Povos`). Link direto: `#projeto=Povos`.
+
 ### Criar uma aba nova
 CMS → **Biblioteca · Tipos (abas)** → novo item com **Nome**, **Slug** (sem espaços, ex. `relatorios`), **Cor** (hex, ex. `#276CB2`), **Ordem**, **Seção** (`academico` ou `publicacoes`) e **Ativo** marcado. Depois é só escolher esse tipo nos itens do Acervo.
 

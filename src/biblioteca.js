@@ -658,7 +658,7 @@ form{background:var(--surface);border-radius:calc(var(--radius) + 4px);padding:c
       this.prefs = { view: {}, group: "ano" };
     }
     blankState() {
-      return { sec: "inicio", sub: "", q: "", scope: "tudo", temas: new Set(), de: "", ate: "", autor: "", ordem: "relevancia", shown: PAGE, filtersOpen: false };
+      return { sec: "inicio", sub: "", q: "", scope: "tudo", temas: new Set(), de: "", ate: "", autor: "", projeto: "", projeto: "", ordem: "relevancia", shown: PAGE, filtersOpen: false };
     }
 
     connectedCallback() {
@@ -739,6 +739,7 @@ form{background:var(--surface);border-radius:calc(var(--radius) + 4px);padding:c
       s.temas = new Set((h.get("temas") || "").split(",").filter(Boolean));
       s.de = h.get("de") || ""; s.ate = h.get("ate") || "";
       s.autor = h.get("autor") || "";
+      s.projeto = h.get("projeto") || "";
       s.ordem = h.get("ordem") || "relevancia";
       this.pendingItem = h.get("item") || "";
     }
@@ -752,6 +753,7 @@ form{background:var(--surface);border-radius:calc(var(--radius) + 4px);padding:c
       if (s.de) h.set("de", s.de);
       if (s.ate) h.set("ate", s.ate);
       if (s.autor) h.set("autor", s.autor);
+      if (s.projeto) h.set("projeto", s.projeto);
       if (s.ordem !== "relevancia") h.set("ordem", s.ordem);
       if (this.openId) h.set("item", this.openId);
       const str = h.toString();
@@ -814,7 +816,7 @@ form{background:var(--surface);border-radius:calc(var(--radius) + 4px);padding:c
           resumo: stripHTML(d.descrio), resumoHTML: d.descrio || "", problema: d.problemaSolucionado || "", solucao: d.soluoAdotada || "",
           resultado: d.resultadoAlcanado || "", capa: d.fotoPrincipal || "", fotos: [d.fotosSecundriasFaixa2, d.foto3, d.foto4].filter(Boolean),
           ods: (d.odsNumeros || []).map((n) => +n).filter((n) => n >= 1 && n <= 17).sort((a, b) => a - b),
-          link: d.linkPagina || "", arquivo: wixDocument(d.arquivo, this.cfg.siteId), temas: temaRefs(d.temas), ordem: d.ordem ?? 999, ano: null, autores: "",
+          link: d.linkPagina || "", arquivo: wixDocument(d.arquivo, this.cfg.siteId), temas: temaRefs(d.temas), ordem: d.ordem ?? 999, ano: null, autores: "", projetos: d.projetos || [],
         });
       });
       const vidTipo = { nome: "Vídeo", slug: "videos", cor: "#c4302b" };
@@ -825,7 +827,7 @@ form{background:var(--surface);border-radius:calc(var(--radius) + 4px);padding:c
         items.push({
           id: d._id, kind: isPod ? "podcast" : "video", sec: "multimidia", sub: tp.slug, tipo: tp, cor: tp.cor,
           titulo: d.titulo || "", resumo: d.descricao || "", url: d.url || "", data: d.data || "", ano: d.data ? +String(d.data).slice(0, 4) : null,
-          duracao: d.duracao || "", capa: d.capa || "", serie: d.serie || "", destaque: !!d.destaque, ordem: d.ordem ?? 999, temas: temaRefs(d.temas), autores: d.serie || "",
+          duracao: d.duracao || "", capa: d.capa || "", serie: d.serie || "", destaque: !!d.destaque, ordem: d.ordem ?? 999, temas: temaRefs(d.temas), autores: d.serie || "", projetos: d.projetos || [],
         });
       });
 
@@ -861,6 +863,10 @@ form{background:var(--surface);border-radius:calc(var(--radius) + 4px);padding:c
       this.autores = [...autores.values()].map((e) => ({ key: e.key, n: e.n, nome: [...e.names.entries()].sort((a, b) => b[1] - a[1] || b[0].length - a[0].length)[0][0] }))
         .sort((a, b) => b.n - a.n || a.nome.localeCompare(b.nome, "pt-BR"));
       this.autorByKey = new Map(this.autores.map((a) => [a.key, a]));
+      items.forEach((it) => { it.projetos = (it.projetos || []).map((p) => String(p).trim()).filter(Boolean); it.projKeys = new Set(it.projetos.map(norm)); });
+      const pc = new Map();
+      items.forEach((it) => it.projetos.forEach((p) => { const k = norm(p); const e = pc.get(k) || { key: k, nome: p, n: 0 }; e.n++; pc.set(k, e); }));
+      this.projetos = [...pc.values()].sort((a, b) => b.n - a.n || a.nome.localeCompare(b.nome, "pt-BR"));
       this.items = items;
       this.byId = new Map(items.map((i) => [i.id, i]));
 
@@ -965,6 +971,7 @@ form{background:var(--surface);border-radius:calc(var(--radius) + 4px);padding:c
       if (s.temas.size && !it.temas.some((t) => s.temas.has(t.slug))) return false;
       if (!ignoreYear && (s.de || s.ate)) { const de = +s.de || 0, ate = +s.ate || 9999; if (!it.ano || it.ano < de || it.ano > ate) return false; }
       if (!ignoreAutor && s.autor && !it.autKeys.has(s.autor)) return false;
+      if (s.projeto && !it.projKeys.has(norm(s.projeto))) return false;
       return true;
     }
     sortRes(res, sec) {
@@ -1007,6 +1014,7 @@ form{background:var(--surface);border-radius:calc(var(--radius) + 4px);padding:c
     <p class="lead">Pesquisas, publicações, tecnologias sociais, vídeos e podcast do Observatório de Territórios Sustentáveis e Saudáveis da Bocaina, num só lugar e sempre atualizados.</p>
     ${this.searchBox("hero")}
     <div class="sugg"><span>Experimente:</span>${SUGESTOES.map((t) => `<button data-act="suggest" data-q="${esc(t)}">${esc(t)}</button>`).join("")}</div>
+    <div class="sugg" data-slot="hero-proj" hidden></div>
     <div class="entries">${SECOES.map((x) => `<button class="entry" data-act="sec" data-sec="${x.slug}" style="--c2:${x.cor === "#123d7a" ? "#7fb2e5" : x.cor}"><b data-count="${x.slug}">—</b><span>${esc(x.nome)}</span><i>${I.arrow}</i></button>`).join("")}</div>
   </div>
 </header>
@@ -1098,13 +1106,15 @@ form{background:var(--surface);border-radius:calc(var(--radius) + 4px);padding:c
         };
         requestAnimationFrame(step);
       });
+      const hp = this.$('[data-slot="hero-proj"]');
+      if (hp && this.projetos.length) { hp.hidden = false; hp.innerHTML = `<span>Projetos:</span>${this.projetos.filter((p) => p.n > 1).map((p) => `<button data-act="projeto-go" data-p="${esc(p.nome)}">Projeto ${esc(p.nome)} · ${p.n}</button>`).join("")}`; }
       this.$$(".tab[data-sec]").forEach((b) => { const n = b.querySelector(".n"); if (n) n.textContent = fmtN(this.countSec[b.dataset.sec] || 0); });
     }
 
     /* ----- roteamento de visão ----- */
     mode() {
       const s = this.state;
-      if (s.sec === "inicio") return s.q ? "busca" : "home";
+      if (s.sec === "inicio") return s.q || s.projeto ? "busca" : "home";
       return "secao";
     }
     render(full) {
@@ -1200,14 +1210,15 @@ ${feats.length ? `<section class="block wrap"><div class="sec-head"><div><h2>Em 
       const all = this.matchQ(this.items.filter((it) => this.passFilters(it)));
       const by = {};
       all.forEach((r) => (by[r.it.sec] = by[r.it.sec] || []).push(r));
+      const projTxt = s.projeto ? ` do Projeto ${esc(s.projeto)}` : "";
       const scopeTxt = s.scope === "titulo" ? " nos títulos" : s.scope === "autoria" ? " na autoria" : s.scope === "texto" ? " no texto completo" : "";
       if (!all.length) {
-        slot.innerHTML = `<div class="sr-head"><h2>Nenhum resultado para <q>${esc(s.q)}</q>${scopeTxt}</h2></div>${this.emptyHTML(true)}`;
+        slot.innerHTML = `<div class="sr-head"><h2>Nenhum resultado${s.q ? ` para <q>${esc(s.q)}</q>${scopeTxt}` : ""}${projTxt}</h2></div>${this.emptyHTML(true)}`;
         return;
       }
-      slot.innerHTML = `<div class="sr-head"><h2>${fmtN(all.length)} ${all.length === 1 ? "resultado" : "resultados"} para <q>${esc(s.q)}</q>${scopeTxt}</h2>${this.ftNote()}
+      slot.innerHTML = `<div class="sr-head"><h2>${fmtN(all.length)} ${s.q ? `${all.length === 1 ? "resultado" : "resultados"} para <q>${esc(s.q)}</q>${scopeTxt}${projTxt}` : `${all.length === 1 ? "item" : "itens"}${projTxt}`}</h2>${this.ftNote()}
         <div class="sr-sum">${SECOES.filter((x) => by[x.slug]).map((x) => `<button style="--c:${x.cor}" data-act="sec" data-sec="${x.slug}" data-keepq="1">${esc(x.nome)} · ${by[x.slug].length} ${I.arrow}</button>`).join("")}</div></div>
-        ${this.activeRowHTML()}
+        ${this.activeRowHTML(true)}
         ${SECOES.filter((x) => by[x.slug]).map((x) => {
           const res = this.sortRes(by[x.slug], x.slug);
           const n = x.slug === "academico" ? 6 : 4;
@@ -1227,6 +1238,22 @@ ${feats.length ? `<section class="block wrap"><div class="sec-head"><div><h2>Em 
     }
 
     /* ----- SEÇÃO ----- */
+    projetosDaSecao(sec) {
+      const n = new Map();
+      this.items.forEach((it) => { if (it.sec === sec) it.projKeys.forEach((k) => n.set(k, (n.get(k) || 0) + 1)); });
+      return this.projetos.filter((p) => n.get(p.key)).map((p) => ({ ...p, n: n.get(p.key) }));
+    }
+    projetosHTML(sec) {
+      const list = this.projetosDaSecao(sec);
+      if (!list.length) return "";
+      return `<label class="sr" for="proj">Projeto</label><select id="proj" class="sel"><option value="">Todos os projetos</option>${list.map((p) => `<option value="${esc(p.nome)}">Projeto ${esc(p.nome)} (${p.n})</option>`).join("")}</select>`;
+    }
+    projChipsHTML(sec) {
+      const list = this.projetosDaSecao(sec);
+      if (!list.length) return "";
+      return `<div class="eixo" style="--c:#0f766e;padding-top:14px"><h4>Projetos</h4><div class="chips">${list.map((p) => `<button class="chip" style="--c:#0f766e" data-act="projeto" data-p="${esc(p.nome)}" aria-pressed="false">${esc(p.nome)} <small>${p.n}</small></button>`).join("")}</div></div>`;
+    }
+
     sectionShellHTML() {
       const s = this.state, x = SECOES.find((z) => z.slug === s.sec);
       const views = VIEWS[s.sec] || VIEWS.publicacoes;
@@ -1247,6 +1274,7 @@ ${feats.length ? `<section class="block wrap"><div class="sec-head"><div><h2>Em 
     <div class="toolbar">
       <button class="fbtn" data-act="toggle-filters" aria-expanded="${s.filtersOpen}" aria-controls="fp">${I.filter} Temas e eixos <span class="badge" hidden></span></button>
       ${acad || s.sec === "publicacoes" || s.sec === "multimidia" ? `<label class="sr" for="de">Ano inicial</label><select id="de" class="sel">${yOpts("Desde")}</select><label class="sr" for="ate">Ano final</label><select id="ate" class="sel">${yOpts("Até")}</select>` : ""}
+      ${this.projetosHTML(s.sec)}
       <label class="sr" for="ordem">Ordenar</label>
       <select id="ordem" class="sel"><option value="relevancia">${acad ? "Mais recentes" : "Relevância"}</option><option value="recentes">Mais recentes</option><option value="antigos">Mais antigos</option><option value="az">Título A–Z</option>${acad ? `<option value="autor">Autoria A–Z</option>` : ""}</select>
       ${acad ? `<label class="sr" for="grp">Agrupar</label><select id="grp" class="sel"><option value="ano">Agrupar por ano</option><option value="tipo">Agrupar por tipo</option><option value="nenhum">Sem agrupar</option></select>` : ""}
@@ -1254,7 +1282,7 @@ ${feats.length ? `<section class="block wrap"><div class="sec-head"><div><h2>Em 
       <span class="count" data-slot="count"></span>
       <div class="seg" role="group" aria-label="Modo de visualização"><span class="knob"></span>${views.map(([v, l, ic]) => `<button data-act="view" data-v="${v}" aria-pressed="false" title="${l}">${ic}<span>${l}</span></button>`).join("")}</div>
     </div>
-    <div class="fpanel ${s.filtersOpen ? "open" : ""}" id="fp"><div><div class="eixos">${this.eixos.map((e) => `<div class="eixo" style="--c:${e.cor}"><h4>${esc(e.nome)}</h4><div class="chips">${e.temas.map((t) =>
+    <div class="fpanel ${s.filtersOpen ? "open" : ""}" id="fp"><div>${this.projChipsHTML(s.sec)}<div class="eixos">${this.eixos.map((e) => `<div class="eixo" style="--c:${e.cor}"><h4>${esc(e.nome)}</h4><div class="chips">${e.temas.map((t) =>
         `<button class="chip" style="--c:${t.cor || e.cor}" data-act="tema" data-slug="${esc(t.slug)}" aria-pressed="false">${esc(t.nome)}</button>`).join("")}</div></div>`).join("")}</div></div></div>
     <div class="active-row" data-slot="active"></div>
     <div class="results" data-slot="results"></div>
@@ -1288,6 +1316,8 @@ ${feats.length ? `<section class="block wrap"><div class="sec-head"><div><h2>Em 
       // controles
       const set = (id, v) => { const el = this.$("#" + id); if (el) el.value = v; };
       set("de", s.de); set("ate", s.ate); set("ordem", s.ordem); set("grp", this.prefs.group);
+      const pj = this.$("#proj"); if (pj) pj.value = [...pj.options].some((o) => norm(o.value) === norm(s.projeto)) ? [...pj.options].find((o) => norm(o.value) === norm(s.projeto)).value : "";
+      this.$$('[data-act="projeto"]').forEach((c) => c.setAttribute("aria-pressed", String(norm(c.dataset.p) === norm(s.projeto))));
       this.$$('[data-act="tema"]').forEach((c) => c.setAttribute("aria-pressed", String(s.temas.has(c.dataset.slug))));
       const badge = this.$(".fbtn .badge"); if (badge) { badge.hidden = !s.temas.size; badge.textContent = s.temas.size; }
       const view = this.viewFor(s.sec);
@@ -1342,6 +1372,7 @@ ${feats.length ? `<section class="block wrap"><div class="sec-head"><div><h2>Em 
       const s = this.state;
       const chips = [
         ...(s.q && inSection ? [`<button class="chip" style="--c:#16283b" aria-pressed="true" data-act="clear-q">“${esc(s.q)}”${s.scope !== "tudo" ? ` em ${({ titulo: "títulos", autoria: "autoria", texto: "texto completo" })[s.scope]}` : ""} ${I.x}</button>`] : []),
+        ...(s.projeto ? [`<button class="chip" style="--c:#0f766e" aria-pressed="true" data-act="projeto" data-p="${esc(s.projeto)}">Projeto ${esc(s.projeto)} ${I.x}</button>`] : []),
         ...(s.autor ? [`<button class="chip" style="--c:#123d7a" aria-pressed="true" data-act="autor" data-k="${esc(s.autor)}">Autoria: ${esc((this.autorByKey.get(s.autor) || {}).nome || s.autor)} ${I.x}</button>`] : []),
         ...[...s.temas].map((sl) => { const t = this.temaBySlug.get(sl); return t ? `<button class="chip" style="--c:${t.cor}" aria-pressed="true" data-act="tema" data-slug="${esc(sl)}">${esc(t.nome)} ${I.x}</button>` : ""; }),
         ...(s.de || s.ate ? [`<button class="chip" style="--c:#3b4d61" aria-pressed="true" data-act="clear-anos">${s.de === s.ate ? s.de : `${s.de || "…"}–${s.ate || "…"}`} ${I.x}</button>`] : []),
@@ -1656,6 +1687,7 @@ ${feats.length ? `<section class="block wrap"><div class="sec-head"><div><h2>Em 
           this.go({});
         }
         if (id === "ordem") this.go({ ordem: e.target.value });
+        if (id === "proj") this.go({ projeto: e.target.value }, { scroll: false });
         if (id === "grp") { this.prefs.group = e.target.value; this.savePrefs(); this.go({}); }
       });
 
@@ -1667,7 +1699,7 @@ ${feats.length ? `<section class="block wrap"><div class="sec-head"><div><h2>Em 
           switch (act) {
             case "sec": {
               const patch = { sec: actEl.dataset.sec, sub: "" };
-              if (actEl.dataset.sec === "inicio") Object.assign(patch, { q: "", temas: new Set(), de: "", ate: "", autor: "" });
+              if (actEl.dataset.sec === "inicio") Object.assign(patch, { q: "", temas: new Set(), de: "", ate: "", autor: "", projeto: "" });
               this.go(patch); return;
             }
             case "sec-sub": this.go({ sec: actEl.dataset.sec, sub: actEl.dataset.sub }); return;
@@ -1677,13 +1709,15 @@ ${feats.length ? `<section class="block wrap"><div class="sec-head"><div><h2>Em 
             case "scope": s.scope = actEl.dataset.v; this.syncChrome(); if (s.q) this.go({}); { const b = this.$('[data-sbox="hero"]'); const i = b.querySelector("input"); if (i.value) this.suggest(b, i.value); } return;
             case "tema": { const t = new Set(s.temas); t.has(actEl.dataset.slug) ? t.delete(actEl.dataset.slug) : t.add(actEl.dataset.slug); this.go({ temas: t }, { scroll: false }); return; }
             case "tema-go": this.closeItem(); this.go({ temas: new Set([actEl.dataset.slug]), q: "", sec: s.sec === "inicio" ? "academico" : s.sec, scrollTop: true }); return;
+            case "projeto-go": this.go({ projeto: actEl.dataset.p, sec: "inicio", sub: "", scrollTop: true }); return;
+            case "projeto": this.go({ projeto: norm(s.projeto) === norm(actEl.dataset.p) ? "" : actEl.dataset.p }, { scroll: false }); return;
             case "autor": this.go({ autor: s.autor === actEl.dataset.k ? "" : actEl.dataset.k }, { scroll: false }); return;
             case "autor-go": this.closeItem(); this.go({ autor: actEl.dataset.k, sec: "academico", sub: "", q: "", scrollTop: true }); return;
             case "year": { const y = actEl.dataset.y; const same = s.de === y && s.ate === y; this.go({ de: same ? "" : y, ate: same ? "" : y }, { scroll: false }); return; }
             case "toggle-authors": this._authorsAll = !this._authorsAll; this.renderSection(); return;
             case "clear-q": this.$$('.sbox input[type="search"]').forEach((i) => (i.value = "")); this.closeAC(); this.go({ q: "" }, { scroll: false }); return;
             case "clear-anos": this.go({ de: "", ate: "" }, { scroll: false }); return;
-            case "clear-all": this.$$('.sbox input[type="search"]').forEach((i) => (i.value = "")); this.go({ q: "", temas: new Set(), de: "", ate: "", autor: "", ordem: "relevancia" }, { scroll: false }); return;
+            case "clear-all": this.$$('.sbox input[type="search"]').forEach((i) => (i.value = "")); this.go({ q: "", temas: new Set(), de: "", ate: "", autor: "", projeto: "", ordem: "relevancia" }, { scroll: false }); return;
             case "toggle-filters": s.filtersOpen = !s.filtersOpen; this.$(".fpanel").classList.toggle("open", s.filtersOpen); actEl.setAttribute("aria-expanded", String(s.filtersOpen)); return;
             case "view": this.prefs.view[s.sec] = actEl.dataset.v; this.savePrefs(); s.shown = PAGE; this.renderSection(); return;
             case "more": s.shown += PAGE; this.renderResults(); return;
