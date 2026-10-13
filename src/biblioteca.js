@@ -170,6 +170,17 @@ a{color:inherit}
 /* ===== HERO ===== */
 .hero{position:relative;color:#fff;background:radial-gradient(120% 140% at 85% 0%,#276cb2 0%,#123d7a 45%,#0f2238 100%);padding:clamp(56px,9vw,120px) 0 clamp(28px,4vw,48px);z-index:5}
 .hero .bg{position:absolute;inset:0;overflow:hidden;pointer-events:none}
+.hero-in{position:relative;z-index:2}
+/* botânicos das ilustrações do OTSS: uma parte visível, o resto vazando da página */
+.flora .bot{position:absolute;display:block;width:var(--w);transform:rotate(var(--r));transform-origin:var(--o);z-index:1}
+.flora .bot img{display:block;width:100%;height:auto;transform-origin:var(--o);filter:drop-shadow(0 18px 30px rgba(5,15,30,.45));opacity:0;animation:botIn 1.8s var(--ease-out) var(--d) forwards,sway var(--t) ease-in-out calc(var(--d) + 1.8s) infinite alternate}
+@keyframes botIn{from{opacity:0;transform:translate(var(--fx),var(--fy)) rotate(var(--s1))}to{opacity:var(--op,1);transform:rotate(var(--s1))}}
+@keyframes sway{0%{opacity:var(--op,1);transform:rotate(var(--s1)) translateY(0)}50%{opacity:var(--op,1);transform:rotate(calc((var(--s1) + var(--s2)) / 2)) translateY(-6px)}100%{opacity:var(--op,1);transform:rotate(var(--s2)) translateY(0)}}
+@container (max-width:1500px){.flora .bot.l{--op:.7}}
+@container (max-width:1280px){.flora .bot{width:calc(var(--w) * .78)}.flora .bot.l{--op:.5}}
+@container (max-width:900px){.flora .bot{width:calc(var(--w) * .6);--op:.5}.flora .bot.m{display:none}}
+@container (max-width:600px){.flora .bot.l{display:none}.flora .bot{--op:.35}}
+@media (prefers-reduced-motion:reduce){.flora .bot img{animation:none;opacity:var(--op,1);transform:none}}
 .hero svg.topo{position:absolute;right:-6%;top:-12%;width:min(1000px,125%);height:auto;opacity:.22}
 .topo path{fill:none;stroke:#cfe6f5;stroke-width:1.1;stroke-dasharray:6 10;animation:drift 38s linear infinite}
 .topo path:nth-child(2n){animation-duration:52s;animation-direction:reverse;opacity:.7}
@@ -579,6 +590,15 @@ form{background:#fff;border-radius:calc(var(--radius) + 4px);padding:clamp(20px,
     book: '<svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#9fb3c4" stroke-width="1.4" stroke-linecap="round"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M4 21V5M9 7h6"/></svg>',
   };
 
+  const BOT = (id, w) => `https://static.wixstatic.com/media/8d49b9_${id}~mv2.png/v1/fit/w_${w},h_${Math.round(w * 1.4)},q_85,enc_auto/botanico.png`;
+  // posições pensadas para a planta entrar pela borda; --o é o ponto de apoio do balanço
+  const BOTANICOS = [
+    { id: "b7e80bbb609a409a86f48882b4e63c5f", cls: "r", w: "620px", pos: "right:-270px;bottom:-175px", r: "-6deg", o: "60% 100%", s: ["-2deg", "2.2deg"], t: "9s", d: ".2s", f: ["60px", "60px"] },
+    { id: "f2a34af41ebc43e49e7ea272df7a355a", cls: "r m", w: "400px", pos: "right:-40px;top:-210px", r: "165deg", o: "50% 100%", s: ["-3deg", "2.5deg"], t: "11s", d: ".5s", f: ["40px", "-60px"] },
+    { id: "8ef082c085d447c59e23f0bbf6fb20d5", cls: "l", w: "330px", pos: "left:-205px;top:-195px", r: "135deg", o: "50% 100%", s: ["-2.5deg", "3deg"], t: "12s", d: ".35s", f: ["-60px", "-40px"] },
+    { id: "6760da4398fc4e9d98cb303a431512d8", cls: "l", w: "360px", pos: "left:-170px;bottom:-130px", r: "24deg", o: "30% 100%", s: ["2deg", "-2.5deg"], t: "10s", d: ".6s", f: ["-60px", "40px"] },
+  ];
+  const FLORA = `<div class="flora" aria-hidden="true">${BOTANICOS.map((b) => `<span class="bot ${b.cls}" style="${b.pos};--w:${b.w};--r:${b.r};--o:${b.o};--s1:${b.s[0]};--s2:${b.s[1]};--t:${b.t};--d:${b.d};--fx:${b.f[0]};--fy:${b.f[1]}"><img src="${BOT(b.id, 700)}" alt="" loading="eager" decoding="async"></span>`).join("")}</div>`;
   const TOPO = `<svg class="topo" viewBox="0 0 900 600" aria-hidden="true">${Array.from({ length: 11 }, (_, i) => {
     const r = 40 + i * 34, cx = 600, cy = 220;
     const pts = Array.from({ length: 13 }, (_, k) => {
@@ -931,7 +951,7 @@ form{background:#fff;border-radius:calc(var(--radius) + 4px);padding:clamp(20px,
     renderShell() {
       this.root.innerHTML = `<style>${CSS}</style>
 <header class="hero" part="hero">
-  <div class="bg">${TOPO}</div>
+  <div class="bg">${TOPO}${FLORA}</div>
   <div class="wrap hero-in">
     <span class="eyebrow">OTSS · Biblioteca</span>
     <h1>Conhecimento que nasce do <em>território</em></h1>
