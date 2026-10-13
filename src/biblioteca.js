@@ -265,19 +265,6 @@ a{color:inherit}
 .tab[aria-selected="true"] .n{background:rgba(255,255,255,.22)}
 .tab[aria-selected="true"] .dot{background:#fff}
 .pill{position:absolute;z-index:0;top:10px;height:42px;border-radius:999px;background:var(--c,var(--ink));transition:left .45s var(--ease-out),width .45s var(--ease-out),background-color .45s var(--ease)}
-.mini{flex:none;width:min(320px,34vw);transition:width .35s var(--ease-out)}
-.mini .sfield{box-shadow:none;border:1.5px solid var(--line);background:var(--card)}
-.mini .sfield:focus-within{box-shadow:0 0 0 4px rgba(39,108,178,.15);border-color:var(--azul)}
-.mini .sfield .ico{width:18px;height:18px;margin-left:14px}
-.mini .sfield input{height:42px;font-size:15px;padding:0 10px}
-.mini.open .sfield{border-radius:22px 22px 0 0}
-.mini .ac{border-width:1.5px;border-color:var(--azul);border-radius:0 0 18px 18px;left:auto;width:min(520px,92vw)}
-.mini .kbd{display:none}
-.mini .sclear{width:28px;height:28px}
-@container (max-width:760px){.mini{width:44px}.mini .sfield input,.mini .right{display:none}.mini .sfield .ico{margin:0 auto}.mini .sfield{height:44px;cursor:pointer}}
-.mini.expand{width:min(100%,420px)}
-.mini.expand .sfield input,.mini.expand .right{display:flex}
-.mini.expand .sfield .ico{margin-left:14px}
 
 /* ===== VIEW ===== */
 .view{min-height:60vh}
@@ -967,7 +954,6 @@ form{background:#fff;border-radius:calc(var(--radius) + 4px);padding:clamp(20px,
     <button class="tab" role="tab" data-act="sec" data-sec="inicio" style="--c:#16283b" aria-selected="false"><span class="dot"></span>Início</button>
     ${SECOES.map((x) => `<button class="tab" role="tab" data-act="sec" data-sec="${x.slug}" style="--c:${x.cor}" aria-selected="false"><span class="dot"></span>${esc(x.nome)}<span class="n">0</span></button>`).join("")}
   </div>
-  ${this.searchBox("mini")}
 </div></nav>
 <main class="view" aria-live="polite"><div class="wrap" style="padding-top:40px"><div class="grid">${'<div class="sk"></div>'.repeat(6)}</div></div></main>
 <section class="submit" id="enviar">
@@ -1583,17 +1569,15 @@ ${feats.length ? `<section class="block wrap"><div class="sec-head"><div><h2>Em 
         });
         box.querySelector(".ac").addEventListener("mousedown", (e) => e.preventDefault());
         box.querySelector(".ac").addEventListener("click", (e) => { const o = e.target.closest(".opt"); if (o) this.pickAC(box, +o.dataset.i); });
-        if (box.classList.contains("mini")) box.addEventListener("click", () => { if (!box.classList.contains("expand") && this.$(".nav").clientWidth < 760) { box.classList.add("expand"); input.focus(); } });
-        input.addEventListener("blur", () => setTimeout(() => { if (!box.contains(this.root.activeElement)) { this.closeAC(box); if (!input.value) box.classList.remove("expand"); } }, 120));
+        input.addEventListener("blur", () => setTimeout(() => { if (!box.contains(this.root.activeElement)) this.closeAC(box); }, 120));
       });
       this._onKey = (e) => {
         const path = e.composedPath ? e.composedPath() : [];
         const typing = path.some((n) => n && (/^(INPUT|TEXTAREA|SELECT)$/.test(n.tagName) || n.isContentEditable));
         if (e.key === "/" && !typing) {
           e.preventDefault();
-          const heroVisible = this.$(".hero").getBoundingClientRect().bottom > 120;
-          const inp = heroVisible ? this.$("#q-hero") : this.$("#q-mini");
-          if (!heroVisible) this.$(".mini").classList.add("expand");
+          const inp = this.$("#q-hero");
+          if (this.$(".hero").getBoundingClientRect().bottom < 200) scrollTo({ top: Math.max(0, inp.getBoundingClientRect().top + scrollY - 160), behavior: reduceMotion() ? "auto" : "smooth" });
           inp.focus(); inp.select();
         }
         if (e.key === "Escape" && this.openId) this.closeItem();
