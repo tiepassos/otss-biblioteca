@@ -45,8 +45,16 @@ As submissões chegam no formulário **“Biblioteca · Submissão de publicaç�
 5. **Destaque no topo** coloca o item no carrossel “Em destaque”.
 6. **Visível no site** desmarcado esconde o item sem apagar.
 
+### Como a página se organiza
+- **Início**: destaques, resumo da produção acadêmica, tecnologias, multimídia e publicações.
+- **Produção acadêmica**: histograma por ano (clique numa barra para filtrar), índice de autoras e autores, subabas por tipo e três modos de leitura: *Linha do tempo* (agrupada por ano ou tipo), *Referências* (ABNT, com “copiar todas”) e *Cards*.
+- **Publicações OTSS**, **Tecnologias Sociais** e **Vídeos e Podcast**: cards ou lista.
+- **Busca**: autocompletar com itens, autoria e temas. Pode buscar em tudo, só nos títulos ou só na autoria. A página de resultados agrupa por seção. Atalho: tecla `/`.
+
+O índice de autoria é montado a partir do campo **Autoria** (nomes separados por `;`, no formato `SOBRENOME, Iniciais`). Quanto mais padronizado esse campo, mais preciso o índice.
+
 ### Criar uma aba nova
-CMS → **Biblioteca · Tipos (abas)** → novo item com **Nome**, **Slug** (sem espaços, ex. `relatorios`), **Cor** (hex, ex. `#276CB2`), **Ordem** e **Ativo** marcado. Depois é só escolher esse tipo nos itens do Acervo.
+CMS → **Biblioteca · Tipos (abas)** → novo item com **Nome**, **Slug** (sem espaços, ex. `relatorios`), **Cor** (hex, ex. `#276CB2`), **Ordem**, **Seção** (`academico` ou `publicacoes`) e **Ativo** marcado. Depois é só escolher esse tipo nos itens do Acervo.
 
 ### Vídeos e podcast
 CMS → **Biblioteca · Vídeos e Podcast** → novo item:
