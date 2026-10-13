@@ -149,6 +149,7 @@
   --shadow:0 1px 2px rgba(22,40,59,.06),0 8px 24px -12px rgba(22,40,59,.18);
   --shadow-up:0 2px 4px rgba(22,40,59,.08),0 22px 44px -18px rgba(22,40,59,.35);
   --ease:cubic-bezier(.2,.8,.2,1); --ease-out:cubic-bezier(.16,1,.3,1);
+  --f-hero:var(--f-hero-custom,"OTSS Museo 900"),"OTSS Museo 900","Museo 900","Museo-900","Museo900","MuseoW01-900","museo-w01-900","Museo","Bitter",Georgia,serif;
   --f-display:"wfont_6eb6fc_e1f17bbabfd94baa82e75763b86d52ec","wf_e1f17bbabfd94baa82e75763b","orig_museo_700_regular","Museo","Bitter",Georgia,serif;
   --f-body:"wfont_6f9e71_807cc1ad0a5347b68f3464a7d59f4bbb","wf_807cc1ad0a5347b68f3464a7d","orig_museo_500","Museo Sans","Nunito Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
   --sticky-top:0px;
@@ -172,7 +173,7 @@ a{color:inherit}
 @keyframes drift{to{stroke-dashoffset:-640}}
 .eyebrow{display:inline-flex;align-items:center;gap:10px;font-size:13px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#bfe0f3}
 .eyebrow::before{content:"";width:28px;height:2px;background:var(--sol);border-radius:2px}
-.hero h1{font-family:var(--f-display);font-weight:700;font-size:clamp(40px,7vw,86px);line-height:.98;letter-spacing:-.02em;margin:18px 0 16px;max-width:15ch}
+.hero h1{font-family:var(--f-hero);font-weight:900;font-synthesis:none;font-size:clamp(40px,7vw,86px);line-height:.98;letter-spacing:-.02em;margin:18px 0 16px;max-width:15ch}
 .hero h1 em{font-style:normal;color:var(--sol)}
 .lead{font-size:clamp(16px,1.6vw,19px);max-width:60ch;color:#dbeaf5;margin:0 0 30px}
 .hero-in>*{animation:heroIn .9s var(--ease-out) both}
@@ -627,10 +628,22 @@ form{background:#fff;border-radius:calc(var(--radius) + 4px);padding:clamp(20px,
       this._ioMore && this._ioMore.disconnect();
     }
     injectFonts() {
+      // Título do hero em Museo 900: arquivo licenciado via atributo "fonte-titulo" (URL .woff2/.woff/.otf)
+      // ou nome de uma família já carregada na página via "fonte-titulo-familia".
+      const fam = this.getAttribute("fonte-titulo-familia");
+      if (fam) this.style.setProperty("--f-hero-custom", `"${fam.replace(/"/g, "")}"`);
+      const url = this.getAttribute("fonte-titulo");
+      if (url && "FontFace" in window && !OtssBiblioteca._heroFont) {
+        OtssBiblioteca._heroFont = new FontFace("OTSS Museo 900", `url("${url.replace(/"/g, "")}")`, { weight: "900", style: "normal", display: "swap" });
+        OtssBiblioteca._heroFont.load().then((f) => document.fonts.add(f)).catch((e) => console.warn("[otss-biblioteca] fonte do título não carregou", e));
+      }
       if (document.getElementById("otss-bib-fonts")) return;
+      const ff = document.createElement("style");
+      ff.textContent = `@font-face{font-family:"OTSS Museo 900";src:local("Museo900-Regular"),local("Museo 900");font-weight:900;font-style:normal;font-display:swap}`;
+      document.head.appendChild(ff);
       const l = document.createElement("link");
       l.id = "otss-bib-fonts"; l.rel = "stylesheet";
-      l.href = "https://fonts.googleapis.com/css2?family=Bitter:wght@600;700&family=Nunito+Sans:opsz,wght@6..12,400;6..12,600;6..12,700;6..12,800&display=swap";
+      l.href = "https://fonts.googleapis.com/css2?family=Bitter:wght@600;700;900&family=Nunito+Sans:opsz,wght@6..12,400;6..12,600;6..12,700;6..12,800&display=swap";
       document.head.appendChild(l);
     }
     $(sel) { return this.root.querySelector(sel); }

@@ -72,4 +72,11 @@ Não tem build. Para ver localmente, sirva a pasta com qualquer servidor estáti
 
 O componente usa um *client ID* OAuth público do Wix (aplicativo “Biblioteca OTSS (front-end)”) para ler o CMS como visitante anônimo. Só as coleções com leitura “Qualquer pessoa” ficam acessíveis. A coleção de submissões não é legível por visitantes.
 
-Atributos opcionais do elemento: `client-id`, `form-id`, `site-id`, `sticky-offset`.
+Atributos opcionais do elemento: `client-id`, `form-id`, `site-id`, `sticky-offset`, `fonte-titulo`, `fonte-titulo-familia`.
+
+### Fonte do título (Museo 900)
+O título do hero usa **Museo 900**. A fonte é comercial e **não está no repositório**. Para aparecer para os visitantes do site, use um destes caminhos (com a licença de webfont da Museo):
+1. **Arquivo no Wix:** suba o `.woff2` (ou `.otf`) da Museo 900 no Gerenciador de Mídia do Wix, copie a URL e adicione no Elemento personalizado o atributo `fonte-titulo` com essa URL.
+2. **Fonte do site:** se a Museo 900 for enviada como fonte do site no Wix Studio, adicione o atributo `fonte-titulo-familia` com o nome da família que o Wix gerar.
+
+Sem nenhum dos dois, o título usa a Museo 900 só se ela estiver instalada no computador de quem visita. Nos outros casos aparece a fonte reserva (Bitter 900).
