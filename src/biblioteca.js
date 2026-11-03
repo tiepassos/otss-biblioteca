@@ -259,7 +259,7 @@ a{color:inherit}
 
 /* ===== NAV fixa ===== */
 .nav{position:sticky;top:var(--sticky-top);z-index:40;background:var(--nav-bg);backdrop-filter:saturate(1.4) blur(12px);-webkit-backdrop-filter:saturate(1.4) blur(12px);border-bottom:1px solid var(--line)}
-.nav::before{content:"";position:absolute;left:0;right:0;bottom:100%;height:var(--sticky-top);background:inherit;opacity:0;transition:opacity .25s;pointer-events:none}
+.nav::before{content:"";position:absolute;left:0;right:0;bottom:100%;height:var(--sticky-top);background:var(--paper);opacity:0;transition:opacity .25s;pointer-events:none}
 .nav[data-stuck]::before{opacity:1}
 .nav .wrap{display:flex;align-items:center;gap:12px}
 .tabs{position:relative;display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;padding:10px 0;flex:1;min-width:0}
