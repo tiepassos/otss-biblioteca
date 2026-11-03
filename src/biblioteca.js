@@ -649,39 +649,47 @@ form{background:var(--surface);border-radius:calc(var(--radius) + 4px);padding:c
   /* ---------- componente ---------- */
 
   /* Menu do site (cabeçalho do Wix): quando fica fixo no topo, as barras do
-     componente grudam logo abaixo da parte visível dele e acompanham se ele
-     some ao rolar. Sem o atributo sticky-offset (ou com "auto") a altura é
-     medida; um número fixa o valor em px. */
+     componente grudam logo abaixo da parte visível dele e acompanham quando
+     ele se esconde ao rolar. Sem o atributo sticky-offset (ou com "auto") a
+     altura é medida; um número fixa o valor em px. */
   function siteHeader() { return document.querySelector("#SITE_HEADER") || document.querySelector("header"); }
-  function headerRest(h) {
+  function headerParts(h) {
     const cs = getComputedStyle(h), r = h.getBoundingClientRect();
-    if (r.height < 2 || cs.display === "none" || cs.visibility === "hidden" || (cs.position !== "sticky" && cs.position !== "fixed")) return 0;
-    let b = 0;
-    h.querySelectorAll("svg,img,nav,button,input,a").forEach((e) => { const q = e.getBoundingClientRect(); if (q.width > 0 && q.height > 0) b = Math.max(b, q.bottom); });
-    return Math.min(b || r.bottom, r.bottom) - r.top;
+    if (r.height < 2 || cs.display === "none" || cs.visibility === "hidden" || (cs.position !== "sticky" && cs.position !== "fixed")) return [];
+    // o que está visível agora (submenus fechados ficam de fora)
+    return [...h.querySelectorAll("svg,img,nav,button,input")].filter((e) => { const q = e.getBoundingClientRect(); return q.width > 0 && q.height > 0; });
   }
   function stickyTracker(el, onChange) {
-    let rest = null, off = -1, raf = 0, hdr = null;
+    let parts = null, hdr = null, off = -1, raf = 0, until = 0;
     const read = () => {
       const a = el.getAttribute("sticky-offset");
       if (a && a !== "auto") return parseInt(a, 10) || 0;
-      if (!hdr || !hdr.isConnected) hdr = siteHeader();
+      if (!hdr || !hdr.isConnected) { hdr = siteHeader(); parts = null; }
       if (!hdr) return 0;
-      if (rest == null) rest = headerRest(hdr);
-      return rest > 0 ? Math.max(0, Math.round(rest + hdr.getBoundingClientRect().top)) : 0;
+      if (!parts) parts = headerParts(hdr);
+      if (!parts.length) return 0;
+      const hb = hdr.getBoundingClientRect().bottom;
+      let b = 0;
+      parts.forEach((e) => { const q = e.getBoundingClientRect(); if (q.height > 0) b = Math.max(b, q.bottom); });
+      return Math.max(0, Math.round(Math.min(b, hb)));
     };
-    const sync = () => { raf = 0; const v = read(); if (v !== off) { off = v; el.style.setProperty("--sticky-top", v + "px"); onChange && onChange(v); } };
-    const onScroll = () => { if (!raf) raf = requestAnimationFrame(sync); };
-    const reset = () => { rest = null; onScroll(); };
-    addEventListener("scroll", onScroll, { passive: true });
+    // segue alguns quadros depois da rolagem: o Wix anima o menu ao esconder/mostrar
+    const tick = () => {
+      const v = read();
+      if (v !== off) { off = v; el.style.setProperty("--sticky-top", v + "px"); onChange && onChange(v); }
+      raf = performance.now() < until ? requestAnimationFrame(tick) : 0;
+    };
+    const wake = () => { until = performance.now() + 900; if (!raf) raf = requestAnimationFrame(tick); };
+    const reset = () => { parts = null; wake(); };
+    addEventListener("scroll", wake, { passive: true });
     addEventListener("resize", reset);
     addEventListener("load", reset);
     const timers = [400, 1500, 4000].map((t) => setTimeout(reset, t));
-    sync();
+    tick();
     return {
       get off() { return Math.max(off, 0); },
       reset,
-      stop() { removeEventListener("scroll", onScroll); removeEventListener("resize", reset); removeEventListener("load", reset); timers.forEach(clearTimeout); cancelAnimationFrame(raf); },
+      stop() { removeEventListener("scroll", wake); removeEventListener("resize", reset); removeEventListener("load", reset); timers.forEach(clearTimeout); cancelAnimationFrame(raf); },
     };
   }
 
