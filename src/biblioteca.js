@@ -647,6 +647,44 @@ form{background:var(--surface);border-radius:calc(var(--radius) + 4px);padding:c
   };
 
   /* ---------- componente ---------- */
+
+  /* Menu do site (cabeçalho do Wix): quando fica fixo no topo, as barras do
+     componente grudam logo abaixo da parte visível dele e acompanham se ele
+     some ao rolar. Sem o atributo sticky-offset (ou com "auto") a altura é
+     medida; um número fixa o valor em px. */
+  function siteHeader() { return document.querySelector("#SITE_HEADER") || document.querySelector("header"); }
+  function headerRest(h) {
+    const cs = getComputedStyle(h), r = h.getBoundingClientRect();
+    if (r.height < 2 || cs.display === "none" || cs.visibility === "hidden" || (cs.position !== "sticky" && cs.position !== "fixed")) return 0;
+    let b = 0;
+    h.querySelectorAll("svg,img,nav,button,input,a").forEach((e) => { const q = e.getBoundingClientRect(); if (q.width > 0 && q.height > 0) b = Math.max(b, q.bottom); });
+    return Math.min(b || r.bottom, r.bottom) - r.top;
+  }
+  function stickyTracker(el, onChange) {
+    let rest = null, off = -1, raf = 0, hdr = null;
+    const read = () => {
+      const a = el.getAttribute("sticky-offset");
+      if (a && a !== "auto") return parseInt(a, 10) || 0;
+      if (!hdr || !hdr.isConnected) hdr = siteHeader();
+      if (!hdr) return 0;
+      if (rest == null) rest = headerRest(hdr);
+      return rest > 0 ? Math.max(0, Math.round(rest + hdr.getBoundingClientRect().top)) : 0;
+    };
+    const sync = () => { raf = 0; const v = read(); if (v !== off) { off = v; el.style.setProperty("--sticky-top", v + "px"); onChange && onChange(v); } };
+    const onScroll = () => { if (!raf) raf = requestAnimationFrame(sync); };
+    const reset = () => { rest = null; onScroll(); };
+    addEventListener("scroll", onScroll, { passive: true });
+    addEventListener("resize", reset);
+    addEventListener("load", reset);
+    const timers = [400, 1500, 4000].map((t) => setTimeout(reset, t));
+    sync();
+    return {
+      get off() { return Math.max(off, 0); },
+      reset,
+      stop() { removeEventListener("scroll", onScroll); removeEventListener("resize", reset); removeEventListener("load", reset); timers.forEach(clearTimeout); cancelAnimationFrame(raf); },
+    };
+  }
+
   class OtssBiblioteca extends HTMLElement {
     static get observedAttributes() { return ["sticky-offset", "tema"]; }
 
@@ -662,6 +700,7 @@ form{background:var(--surface);border-radius:calc(var(--radius) + 4px);padding:c
     }
 
     connectedCallback() {
+      if (!this._sticky) this._sticky = stickyTracker(this);
       if (this._booted) return;
       this._booted = true;
       ["client-id", "form-id", "site-id"].forEach((a) => {
@@ -682,10 +721,12 @@ form{background:var(--surface);border-radius:calc(var(--radius) + 4px);padding:c
       this.load();
     }
     attributeChangedCallback(name, _o, v) {
-      if (name === "sticky-offset") this.style.setProperty("--sticky-top", (parseInt(v, 10) || 0) + "px");
+      if (name === "sticky-offset" && this._sticky) this._sticky.reset();
       if (name === "tema" && this._booted) this.applyTheme();
     }
+    stickyOff() { return this._sticky ? this._sticky.off : 0; }
     disconnectedCallback() {
+      this._sticky && this._sticky.stop(); this._sticky = null;
       document.removeEventListener("keydown", this._onKey);
       document.removeEventListener("click", this._onDocClick);
       removeEventListener("resize", this._onResize);
@@ -1160,7 +1201,7 @@ form{background:var(--surface);border-radius:calc(var(--radius) + 4px);padding:c
     }
     scrollToView() {
       const nav = this.$(".nav");
-      const off = parseInt(this.getAttribute("sticky-offset"), 10) || 0;
+      const off = this.stickyOff();
       const top = this.$(".view").getBoundingClientRect().top + scrollY - nav.offsetHeight - off;
       if (scrollY > top || this.$(".hero").getBoundingClientRect().bottom > 0) scrollTo({ top, behavior: reduceMotion() ? "auto" : "smooth" });
     }
