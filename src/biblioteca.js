@@ -259,6 +259,8 @@ a{color:inherit}
 
 /* ===== NAV fixa ===== */
 .nav{position:sticky;top:var(--sticky-top);z-index:40;background:var(--nav-bg);backdrop-filter:saturate(1.4) blur(12px);-webkit-backdrop-filter:saturate(1.4) blur(12px);border-bottom:1px solid var(--line)}
+.nav::before{content:"";position:absolute;left:0;right:0;bottom:100%;height:var(--sticky-top);background:inherit;opacity:0;transition:opacity .25s;pointer-events:none}
+.nav[data-stuck]::before{opacity:1}
 .nav .wrap{display:flex;align-items:center;gap:12px}
 .tabs{position:relative;display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;padding:10px 0;flex:1;min-width:0}
 .tabs::-webkit-scrollbar{display:none}
@@ -659,14 +661,18 @@ form{background:var(--surface);border-radius:calc(var(--radius) + 4px);padding:c
     // o que está visível agora (submenus fechados ficam de fora)
     return [...h.querySelectorAll("svg,img,nav,button,input")].filter((e) => { const q = e.getBoundingClientRect(); return q.width > 0 && q.height > 0; });
   }
-  function stickyTracker(el, onChange) {
+  function stickyTracker(el, onChange, barOf) {
     let parts = null, hdr = null, off = -1, raf = 0, until = 0;
     const read = () => {
       const a = el.getAttribute("sticky-offset");
       if (a && a !== "auto") return parseInt(a, 10) || 0;
       if (!hdr || !hdr.isConnected) { hdr = siteHeader(); parts = null; }
       if (!hdr) return 0;
-      if (!parts) parts = headerParts(hdr);
+      if (!parts) {
+        parts = headerParts(hdr);
+        // o menu do Wix vem sem z-index: sem isso o conteúdo da página passa por cima dele
+        if (parts.length && getComputedStyle(hdr).zIndex === "auto") hdr.style.zIndex = "60";
+      }
       if (!parts.length) return 0;
       const hb = hdr.getBoundingClientRect().bottom;
       let b = 0;
@@ -677,6 +683,8 @@ form{background:var(--surface);border-radius:calc(var(--radius) + 4px);padding:c
     const tick = () => {
       const v = read();
       if (v !== off) { off = v; el.style.setProperty("--sticky-top", v + "px"); onChange && onChange(v); }
+      const bar = barOf && barOf();
+      if (bar) bar.toggleAttribute("data-stuck", v > 0 && bar.getBoundingClientRect().top <= v + 1);
       raf = performance.now() < until ? requestAnimationFrame(tick) : 0;
     };
     const wake = () => { until = performance.now() + 900; if (!raf) raf = requestAnimationFrame(tick); };
@@ -708,7 +716,7 @@ form{background:var(--surface);border-radius:calc(var(--radius) + 4px);padding:c
     }
 
     connectedCallback() {
-      if (!this._sticky) this._sticky = stickyTracker(this);
+      if (!this._sticky) this._sticky = stickyTracker(this, null, () => this.$(".nav"));
       if (this._booted) return;
       this._booted = true;
       ["client-id", "form-id", "site-id"].forEach((a) => {

@@ -17,7 +17,7 @@ Tudo vem do **CMS do Wix** em tempo real. Item novo no CMS aparece na página so
    `https://tiepassos.github.io/otss-biblioteca/src/biblioteca.js`
 4. Em **Nome da tag**, coloque: `otss-biblioteca`
 5. Estique o elemento na largura toda da página e defina a altura como **automática** (se não houver essa opção, use uma altura grande, como 4000 px).
-6. Opcional: se o cabeçalho do site ficar fixo por cima das abas, adicione o atributo `sticky-offset` com a altura do cabeçalho em pixels (ex.: `80`).
+6. Menu do site: nada a configurar. A barra de abas mede sozinha o cabeçalho fixo do Wix e gruda logo abaixo dele, acompanhando quando o menu se esconde ao rolar. Para fixar outro valor, use o atributo `sticky-offset` em pixels (ex.: `80`).
 7. Publique. Depois de validar, troque os links do menu de `/biblioteca` para a página nova (ou renomeie as URLs).
 
 > Elementos personalizados exigem plano Premium com domínio conectado. O site já tem os dois.
