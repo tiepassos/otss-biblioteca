@@ -1094,7 +1094,6 @@ form{background:var(--surface);border-radius:calc(var(--radius) + 4px);padding:c
     <div class="reveal">${this.formHTML()}</div>
   </div>
 </section>
-<p class="foot-note wrap">Acervo atualizado automaticamente a partir do CMS do OTSS.</p>
 <div class="scrim" data-act="close"></div>
 <aside class="drawer" role="dialog" aria-modal="true" aria-label="Detalhes do item" tabindex="-1"></aside>
 <div class="toast" role="status"></div>`;
@@ -1550,11 +1549,10 @@ ${feats.length ? `<section class="block wrap"><div class="sec-head"><div><h2>Em 
         <iframe title="Vozes do Território no Spotify" loading="lazy" src="https://open.spotify.com/embed/show/${this.cfg.spotifyShow}?utm_source=generator&theme=0" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"></iframe></div>`;
     }
     ytHTML() {
-      return `<div class="show" style="background:linear-gradient(135deg,#3a1414,#16283b)"><div>
+      return `<div class="show" style="background:linear-gradient(135deg,#3a1414,#16283b);grid-template-columns:1fr"><div>
         <span class="eyebrow" style="color:#ffb3b3">YouTube</span><h3>OTSS Bocaina</h3>
         <p>Encontros, plenárias, formações e registros dos territórios.</p>
-        <a class="cta yt" href="${this.cfg.youtube}?sub_confirmation=1" target="_blank" rel="noopener">Inscrever-se no canal ${I.ext}</a></div>
-        <div style="color:#d6e4ef;font-size:14px">Novos vídeos entram pelo CMS (coleção <b>Biblioteca · Vídeos e Podcast</b>): basta colar o link do YouTube.</div></div>`;
+        <a class="cta yt" href="${this.cfg.youtube}?sub_confirmation=1" target="_blank" rel="noopener">Inscrever-se no canal ${I.ext}</a></div></div>`;
     }
 
     /* ----- autocompletar ----- */
